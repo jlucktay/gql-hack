@@ -22,6 +22,7 @@ THE SOFTWARE.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"time"
@@ -62,7 +63,14 @@ to quickly create a Cobra application.`,
 			)
 			failOnError(err, "Failed to declare a queue")
 
-			body := time.Now().UTC().Format("20060102.150405.000000-0700")
+			body := messageBody{
+				Timestamp: time.Now().UTC().Format("20060102.150405.000000-0700"),
+			}
+
+			bodyBytes, errMarshal := json.Marshal(body)
+			if errMarshal != nil {
+				log.Fatal("error marshaling JSON:", errMarshal)
+			}
 
 			err = ch.Publish(
 				"",     // exchange
@@ -70,10 +78,10 @@ to quickly create a Cobra application.`,
 				false,  // mandatory
 				false,  // immediate
 				amqp.Publishing{
-					ContentType: "text/plain",
-					Body:        []byte(body),
+					ContentType: "application/json",
+					Body:        bodyBytes,
 				})
-			log.Printf(" [x] Sent %s", body)
+			log.Printf(" [x] Sent %#v", body)
 			failOnError(err, "Failed to publish a message")
 
 			time.Sleep(1 * time.Second)
@@ -92,10 +100,4 @@ func init() {
 	// is called directly, e.g.:
 	// publishCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 	rootCmd.AddCommand(publishCmd)
-}
-
-func failOnError(err error, msg string) {
-	if err != nil {
-		log.Fatalf("%s: %s", msg, err)
-	}
 }
