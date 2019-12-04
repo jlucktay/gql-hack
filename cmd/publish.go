@@ -24,6 +24,7 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/streadway/amqp"
@@ -50,34 +51,37 @@ to quickly create a Cobra application.`,
 		failOnError(err, "Failed to open a channel")
 		defer ch.Close()
 
-		q, err := ch.QueueDeclare(
-			"hello", // name
-			false,   // durable
-			false,   // delete when unused
-			false,   // exclusive
-			false,   // no-wait
-			nil,     // arguments
-		)
-		failOnError(err, "Failed to declare a queue")
+		for {
+			q, err := ch.QueueDeclare(
+				"hello", // name
+				false,   // durable
+				false,   // delete when unused
+				false,   // exclusive
+				false,   // no-wait
+				nil,     // arguments
+			)
+			failOnError(err, "Failed to declare a queue")
 
-		body := "Hello World!"
-		err = ch.Publish(
-			"",     // exchange
-			q.Name, // routing key
-			false,  // mandatory
-			false,  // immediate
-			amqp.Publishing{
-				ContentType: "text/plain",
-				Body:        []byte(body),
-			})
-		log.Printf(" [x] Sent %s", body)
-		failOnError(err, "Failed to publish a message")
+			body := time.Now().UTC().Format("20060102.150405.000000-0700")
+
+			err = ch.Publish(
+				"",     // exchange
+				q.Name, // routing key
+				false,  // mandatory
+				false,  // immediate
+				amqp.Publishing{
+					ContentType: "text/plain",
+					Body:        []byte(body),
+				})
+			log.Printf(" [x] Sent %s", body)
+			failOnError(err, "Failed to publish a message")
+
+			time.Sleep(1 * time.Second)
+		}
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(publishCmd)
-
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
@@ -87,6 +91,7 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// publishCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.AddCommand(publishCmd)
 }
 
 func failOnError(err error, msg string) {
